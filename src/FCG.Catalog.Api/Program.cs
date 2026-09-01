@@ -9,6 +9,7 @@ using FCG.Catalog.Api.Infrastructure.Data;
 using FCG.Catalog.Api.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using MongoDB.Driver;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -50,12 +51,29 @@ try
                   ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection ausente.");
     builder.Services.AddDbContext<CatalogDbContext>(opt => opt.UseNpgsql(connStr));
 
+    // Persistência poliglota: o PostgreSQL segue dono do transacional (jogos,
+    // biblioteca, promoções) e o MongoDB guarda as avaliações, que são
+    // documentos flexíveis e de alta volumetria.
+    var mongoConn = builder.Configuration["MongoDb:ConnectionString"]
+                    ?? throw new InvalidOperationException("MongoDb:ConnectionString ausente.");
+    builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConn));
+
+    // Cache distribuído para as leituras repetidas de catálogo e promoções.
+    builder.Services.AddStackExchangeRedisCache(o =>
+    {
+        o.Configuration = builder.Configuration["Redis:ConnectionString"]
+                          ?? throw new InvalidOperationException("Redis:ConnectionString ausente.");
+        o.InstanceName = "fcg-catalog:";
+    });
+
     builder.Services.AddScoped<IJogoRepository, JogoRepository>();
     builder.Services.AddScoped<IPromocaoRepository, PromocaoRepository>();
     builder.Services.AddScoped<IBibliotecaJogoRepository, BibliotecaJogoRepository>();
+    builder.Services.AddSingleton<IAvaliacaoRepository, AvaliacaoMongoRepository>();
     builder.Services.AddScoped<IJogoService, JogoService>();
     builder.Services.AddScoped<IPromocaoService, PromocaoService>();
     builder.Services.AddScoped<IBibliotecaJogoService, BibliotecaJogoService>();
+    builder.Services.AddScoped<IAvaliacaoService, AvaliacaoService>();
     builder.Services.AddSingleton<IPricingService, PricingService>();
 
     builder.Services.AddFcgMessaging(builder.Configuration, "catalog", x =>

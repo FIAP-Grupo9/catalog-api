@@ -27,3 +27,13 @@ public interface IBibliotecaJogoRepository
     Task<BibliotecaJogo?> FindActiveAsync(Guid usuarioId, Guid jogoId, CancellationToken ct = default);
     Task<BibliotecaJogo?> FindByOrderIdAsync(Guid orderId, CancellationToken ct = default);
 }
+
+// Persistido no MongoDB, e não via EF Core: os métodos recebem/retornam a
+// entidade diretamente, sem DbContext nem unidade de trabalho compartilhada.
+public interface IAvaliacaoRepository
+{
+    Task AddAsync(Avaliacao avaliacao, CancellationToken ct = default);
+    Task<IReadOnlyList<Avaliacao>> GetByJogoAsync(Guid jogoId, int page, int pageSize, CancellationToken ct = default);
+    Task<(double Media, long Total)> GetResumoAsync(Guid jogoId, CancellationToken ct = default);
+    Task<bool> UsuarioJaAvaliouAsync(Guid jogoId, Guid usuarioId, CancellationToken ct = default);
+}

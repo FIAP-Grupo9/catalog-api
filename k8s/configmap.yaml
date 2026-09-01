@@ -11,4 +11,6 @@ data:
   RabbitMq__Host: "rabbitmq"
   RabbitMq__Port: "5672"
   RabbitMq__VirtualHost: "/"
+  MongoDb__Database: "catalog"
+  Redis__ConnectionString: "redis:6379"
   Swagger__Enabled: "true"

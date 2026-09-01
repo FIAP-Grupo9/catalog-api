@@ -9,4 +9,6 @@ public static class Messages
     public const string DataFimDeveSerAposDataInicio = "Data fim deve ser posterior à data início.";
     public const string JogoJaCadastradoNaBiblioteca = "Jogo já está na biblioteca do usuário.";
     public const string ItemNaoEncontrado = "Item não encontrado.";
+    public const string JogoNaoEstaNaBiblioteca = "Só é possível avaliar um jogo que está na sua biblioteca.";
+    public const string JogoJaAvaliado = "Você já avaliou este jogo.";
 }

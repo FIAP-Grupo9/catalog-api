@@ -27,3 +27,10 @@ public interface IBibliotecaJogoService
     Task<Result<BibliotecaJogoDTO>> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Result<OrderPendingDTO>> IniciarCompraAsync(Guid usuarioId, string userEmail, string userName, CreateBibliotecaJogoDTO dto, CancellationToken ct = default);
 }
+
+public interface IAvaliacaoService
+{
+    Task<Result<AvaliacaoDTO>> CriarAsync(Guid jogoId, Guid usuarioId, string usuarioNome, CreateAvaliacaoDTO dto, CancellationToken ct = default);
+    Task<Result<IEnumerable<AvaliacaoDTO>>> ListarPorJogoAsync(Guid jogoId, int page, int pageSize, CancellationToken ct = default);
+    Task<Result<ResumoAvaliacoesDTO>> ResumoPorJogoAsync(Guid jogoId, CancellationToken ct = default);
+}
