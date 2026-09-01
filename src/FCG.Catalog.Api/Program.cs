@@ -58,7 +58,7 @@ try
     builder.Services.AddScoped<IBibliotecaJogoService, BibliotecaJogoService>();
     builder.Services.AddSingleton<IPricingService, PricingService>();
 
-    builder.Services.AddFcgMessaging(builder.Configuration, x =>
+    builder.Services.AddFcgMessaging(builder.Configuration, "catalog", x =>
     {
         x.AddConsumer<PaymentProcessedConsumer>();
     });
