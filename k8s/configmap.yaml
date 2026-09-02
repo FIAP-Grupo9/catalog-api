@@ -11,6 +11,8 @@ data:
   RabbitMq__Host: "rabbitmq"
   RabbitMq__Port: "5672"
   RabbitMq__VirtualHost: "/"
+  # Popula o catalogo com alguns jogos, apenas se ele estiver vazio.
+  SeedData__Enabled: "true"
   MongoDb__Database: "catalog"
   Redis__ConnectionString: "redis:6379"
   Swagger__Enabled: "true"

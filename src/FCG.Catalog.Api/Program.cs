@@ -89,6 +89,10 @@ try
     {
         var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         db.Database.EnsureCreated();
+        await DataSeeder.SeedAsync(
+            db,
+            app.Configuration,
+            scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DataSeeder"));
     }
 
     if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
