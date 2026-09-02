@@ -41,7 +41,39 @@ Catálogo de jogos, promoções e biblioteca do usuário. **Inicia o fluxo de co
 | GET | `/api/biblioteca` | autenticado | Biblioteca do usuário logado |
 | GET | `/api/biblioteca/{id}` | autenticado | Item da biblioteca |
 | **POST** | **`/api/biblioteca`** | **autenticado** | **Inicia compra → 202 Accepted `{ orderId, status: "pending" }`** |
+| POST | `/api/jogos/{id}/avaliacoes` | autenticado | Avalia um jogo (nota de 1 a 5 e comentário) |
+| GET | `/api/jogos/{id}/avaliacoes` | público | Lista as avaliações, das mais recentes para as mais antigas |
+| GET | `/api/jogos/{id}/avaliacoes/resumo` | público | Nota média e total de avaliações |
 | GET | `/health` | público | Health check |
+| GET | `/metrics` | interno | Métricas no formato Prometheus |
+
+---
+
+## Persistência poliglota (Fase 3)
+
+Este serviço usa três armazenamentos, cada um para o que faz melhor:
+
+| Onde | O que guarda | Por quê |
+|---|---|---|
+| **PostgreSQL** | Jogos, promoções, biblioteca do usuário | Dados que exigem consistência rigorosa e transação |
+| **MongoDB** | Avaliações de jogos | Documento naturalmente flexível (comentário em texto livre), volume que cresce sem limite e sem necessidade de transação |
+| **Redis** | Cópia temporária do catálogo e das promoções em vigor | Consultas muito repetidas, que devolvem sempre o mesmo resultado entre uma alteração e outra |
+
+### Avaliações (MongoDB)
+
+Regras: só avalia quem possui o jogo na biblioteca (`403`) e apenas uma vez por jogo (`409`); nota fora de 1 a 5 é recusada (`400`). O resumo com média e total é calculado pelo próprio banco, e a coleção tem índice por jogo e data.
+
+### Cache (Redis)
+
+Padrão *cache-aside*: a primeira consulta vai ao banco e guarda o resultado; as seguintes vêm do cache. **A cópia é descartada assim que o dado muda** — criar, alterar ou remover um jogo ou promoção invalida o cache, evitando exibir informação desatualizada. Há também um prazo de validade de 5 minutos como segurança adicional.
+
+Uma falha do Redis não derruba o serviço: o acesso ao cache é tolerante a erro e a consulta segue para o banco. Na validação, a mesma consulta caiu de **584 ms para 17 ms** entre a primeira e a segunda chamada.
+
+### Observabilidade (Fase 3)
+
+O serviço publica métricas em `/metrics`, coletadas pelo Prometheus e exibidas no painel do Grafana: tempo de resposta, volume de requisições por rota e por código HTTP, e taxa de erros. O endereço é interno ao cluster e não é exposto pelo gateway.
+
+---
 
 ## Eventos publicados
 
@@ -71,6 +103,9 @@ Catálogo de jogos, promoções e biblioteca do usuário. **Inicia o fluxo de co
 | `JwtSettings__Secret` | dev placeholder | Mesma chave usada pelo UsersAPI |
 | `JwtSettings__Issuer` / `__Audience` | `FCG.UsersAPI` / `FCG.Services` | Mesma config dos demais |
 | `RabbitMq__Host`/`Port`/`Username`/`Password` | localhost/5672/guest/guest | Broker |
+| `MongoDb__ConnectionString` | `mongodb://...@mongodb:27017` | MongoDB das avaliações |
+| `MongoDb__Database` | `catalog` | Nome do banco no MongoDB |
+| `Redis__ConnectionString` | `redis:6379` | Cache distribuído |
 | `Swagger__Enabled` | `true` | UI Swagger |
 
 CatalogAPI **não** emite tokens — apenas valida. Não registra `ITokenService`.
