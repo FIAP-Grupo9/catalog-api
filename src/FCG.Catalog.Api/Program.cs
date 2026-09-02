@@ -1,6 +1,7 @@
 using FCG.BuildingBlocks.Auth;
 using FCG.BuildingBlocks.Messaging;
 using FCG.BuildingBlocks.Middleware;
+using FCG.BuildingBlocks.Observability;
 using FCG.Catalog.Api.Application.Pricing;
 using FCG.Catalog.Api.Application.Services;
 using FCG.Catalog.Api.Domain.Repositories;
@@ -80,6 +81,7 @@ try
     {
         x.AddConsumer<PaymentProcessedConsumer>();
     });
+    builder.Services.AddFcgObservability("catalog-api");
 
     var app = builder.Build();
 
@@ -101,6 +103,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
     app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CatalogAPI" }));
+    app.UseFcgObservability();
 
     app.Run();
 }
