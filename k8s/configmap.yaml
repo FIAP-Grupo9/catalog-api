@@ -15,4 +15,6 @@ data:
   SeedData__Enabled: "true"
   MongoDb__Database: "catalog"
   Redis__ConnectionString: "redis:6379"
+  Elasticsearch__Uri: "http://elasticsearch:9200"
+  Elasticsearch__IndexName: "catalog-jogos"
   Swagger__Enabled: "true"

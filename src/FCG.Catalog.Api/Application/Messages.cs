@@ -11,4 +11,6 @@ public static class Messages
     public const string ItemNaoEncontrado = "Item não encontrado.";
     public const string JogoNaoEstaNaBiblioteca = "Só é possível avaliar um jogo que está na sua biblioteca.";
     public const string JogoJaAvaliado = "Você já avaliou este jogo.";
+    public const string TermoDeBuscaObrigatorio = "Informe o termo de busca (q).";
+    public const string BuscaIndisponivel = "Serviço de busca temporariamente indisponível.";
 }

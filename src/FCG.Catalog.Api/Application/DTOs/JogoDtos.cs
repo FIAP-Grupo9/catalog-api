@@ -23,6 +23,15 @@ public class CreateJogoDTO
     public decimal Preco { get; set; }
 }
 
+public class SearchJogoDTO
+{
+    public Guid Id { get; set; }
+    public string? Nome { get; set; }
+    public string? Descricao { get; set; }
+    public decimal Preco { get; set; }
+    public double Score { get; set; }
+}
+
 public class UpdateJogoDTO
 {
     [Required, StringLength(200, MinimumLength = 2)]
