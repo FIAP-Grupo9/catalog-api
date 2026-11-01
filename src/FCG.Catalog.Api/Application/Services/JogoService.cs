@@ -3,6 +3,7 @@ using FCG.BuildingBlocks.Common;
 using FCG.Catalog.Api.Application.DTOs;
 using FCG.Catalog.Api.Domain.Entities;
 using FCG.Catalog.Api.Domain.Repositories;
+using FCG.Catalog.Api.Infrastructure.Search;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace FCG.Catalog.Api.Application.Services;
@@ -18,12 +19,14 @@ public class JogoService : IJogoService
 
     private readonly IJogoRepository _repo;
     private readonly IDistributedCache _cache;
+    private readonly IJogoSearchIndexer _searchIndexer;
     private readonly ILogger<JogoService> _logger;
 
-    public JogoService(IJogoRepository repo, IDistributedCache cache, ILogger<JogoService> logger)
+    public JogoService(IJogoRepository repo, IDistributedCache cache, IJogoSearchIndexer searchIndexer, ILogger<JogoService> logger)
     {
         _repo = repo;
         _cache = cache;
+        _searchIndexer = searchIndexer;
         _logger = logger;
     }
 
@@ -64,6 +67,7 @@ public class JogoService : IJogoService
         };
         await _repo.AddAsync(j, ct);
         await InvalidarCacheAsync(ct);
+        await TryIndexAsync(j, ct);
         return Result<JogoDTO>.Success(Map(j), 201);
     }
 
@@ -79,6 +83,7 @@ public class JogoService : IJogoService
         j.UpdatedAt = DateTime.UtcNow;
         await _repo.UpdateAsync(j, ct);
         await InvalidarCacheAsync(ct);
+        await TryIndexAsync(j, ct);
         return Result<bool>.Success(true);
     }
 
@@ -88,7 +93,33 @@ public class JogoService : IJogoService
             return Result<bool>.Failure(Messages.JogoNaoEncontrado, 404);
 
         await InvalidarCacheAsync(ct);
+        await TryRemoveFromIndexAsync(id, ct);
         return Result<bool>.Success(true);
+    }
+
+    public async Task<Result<IEnumerable<SearchJogoDTO>>> SearchAsync(string query, int page, int pageSize, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return Result<IEnumerable<SearchJogoDTO>>.Failure(Messages.TermoDeBuscaObrigatorio, 400);
+
+        try
+        {
+            var hits = await _searchIndexer.SearchAsync(query, page, pageSize, ct);
+            var results = hits.Select(h => new SearchJogoDTO
+            {
+                Id = h.Document.Id,
+                Nome = h.Document.Nome,
+                Descricao = h.Document.Descricao,
+                Preco = h.Document.Preco,
+                Score = h.Score
+            });
+            return Result<IEnumerable<SearchJogoDTO>>.Success(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao consultar o Elasticsearch para a busca '{Query}'.", query);
+            return Result<IEnumerable<SearchJogoDTO>>.Failure(Messages.BuscaIndisponivel, 503);
+        }
     }
 
     // O cache é acelerador, não fonte de verdade: uma falha do Redis degrada a
@@ -129,6 +160,34 @@ public class JogoService : IJogoService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Falha ao invalidar o cache {Key}.", CacheKeyAll);
+        }
+    }
+
+    // O Elasticsearch é o motor de busca, não a fonte de verdade: uma falha ao
+    // sincronizar o índice não pode impedir o cadastro/edição/remoção do jogo no
+    // Postgres. O jogo apenas fica temporariamente fora de resultados de busca
+    // até a próxima escrita ou o reindex de startup.
+    private async Task TryIndexAsync(Jogo jogo, CancellationToken ct)
+    {
+        try
+        {
+            await _searchIndexer.IndexAsync(jogo, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao indexar o jogo {Id} no Elasticsearch.", jogo.Id);
+        }
+    }
+
+    private async Task TryRemoveFromIndexAsync(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await _searchIndexer.DeleteAsync(id, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao remover o jogo {Id} do Elasticsearch.", id);
         }
     }
 

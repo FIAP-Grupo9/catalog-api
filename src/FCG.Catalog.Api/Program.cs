@@ -8,6 +8,9 @@ using FCG.Catalog.Api.Domain.Repositories;
 using FCG.Catalog.Api.Infrastructure.Consumers;
 using FCG.Catalog.Api.Infrastructure.Data;
 using FCG.Catalog.Api.Infrastructure.Repositories;
+using FCG.Catalog.Api.Infrastructure.Search;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Transport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
@@ -67,6 +70,18 @@ try
         o.InstanceName = "fcg-catalog:";
     });
 
+    // Motor de busca independente do Postgres: o catálogo relacional continua
+    // dono da verdade, mas consultas de busca (fuzzy + relevância) são servidas
+    // pelo Elasticsearch, mantido em sincronia pelo JogoService a cada escrita.
+    var esUri = builder.Configuration["Elasticsearch:Uri"]
+                ?? throw new InvalidOperationException("Elasticsearch:Uri ausente.");
+    var esSettings = new ElasticsearchClientSettings(new Uri(esUri));
+    var esApiKey = builder.Configuration["Elasticsearch:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(esApiKey))
+        esSettings = esSettings.Authentication(new ApiKey(esApiKey));
+    builder.Services.AddSingleton(new ElasticsearchClient(esSettings));
+    builder.Services.AddSingleton<IJogoSearchIndexer, ElasticsearchJogoIndexer>();
+
     builder.Services.AddScoped<IJogoRepository, JogoRepository>();
     builder.Services.AddScoped<IPromocaoRepository, PromocaoRepository>();
     builder.Services.AddScoped<IBibliotecaJogoRepository, BibliotecaJogoRepository>();
@@ -93,6 +108,20 @@ try
             db,
             app.Configuration,
             scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DataSeeder"));
+
+        // Best-effort: um Elasticsearch fora do ar no startup não pode impedir a
+        // API de subir (mesma filosofia do cache). A busca fica indisponível até
+        // o índice ser recriado, mas o CRUD do catálogo continua funcionando.
+        try
+        {
+            var indexer = scope.ServiceProvider.GetRequiredService<IJogoSearchIndexer>();
+            await indexer.EnsureIndexAsync();
+            await indexer.ReindexAllAsync(await db.Jogos.Where(j => j.IsActive).ToListAsync());
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Falha ao preparar o índice do Elasticsearch no startup; busca ficará indisponível até a próxima tentativa.");
+        }
     }
 
     if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))

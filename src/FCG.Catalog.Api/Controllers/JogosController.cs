@@ -20,6 +20,17 @@ public class JogosController : ControllerBase
         return r.IsSuccess ? Ok(r.Data) : StatusCode(r.StatusCode, new { message = r.ErrorMessage });
     }
 
+    // Busca avançada via Elasticsearch: fuzzy search (tolerante a erros de
+    // digitação) nos campos nome/descricao, ordenada por relevância (_score).
+    // Independente da consulta tradicional ao Postgres usada pelos demais endpoints.
+    [HttpGet("search"), AllowAnonymous]
+    public async Task<ActionResult<IEnumerable<SearchJogoDTO>>> Buscar(
+        [FromQuery] string q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        var r = await _jogos.SearchAsync(q, page, pageSize, ct);
+        return r.IsSuccess ? Ok(r.Data) : StatusCode(r.StatusCode, new { message = r.ErrorMessage });
+    }
+
     [HttpGet("{id:guid}"), AllowAnonymous]
     public async Task<ActionResult<JogoDTO>> PorId(Guid id, CancellationToken ct)
     {

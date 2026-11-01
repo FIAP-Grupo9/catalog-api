@@ -10,6 +10,7 @@ public interface IJogoService
     Task<Result<JogoDTO>> CreateAsync(CreateJogoDTO dto, CancellationToken ct = default);
     Task<Result<bool>> UpdateAsync(Guid id, UpdateJogoDTO dto, CancellationToken ct = default);
     Task<Result<bool>> DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<Result<IEnumerable<SearchJogoDTO>>> SearchAsync(string query, int page, int pageSize, CancellationToken ct = default);
 }
 
 public interface IPromocaoService
