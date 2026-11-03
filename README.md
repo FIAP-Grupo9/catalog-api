@@ -200,6 +200,15 @@ Invoke-RestMethod -Uri http://localhost:5002/api/biblioteca -Method Post -Header
 
 ---
 
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`):
+
+- **CI** — em todo push ou pull request para `master`: `dotnet restore` + `build` do `CatalogAPI.sln`. Ainda não há projeto de testes neste serviço (ver `users-api`/`payments-api` para o padrão a seguir quando houver).
+- **CD** — só em push na `master`: build e publicação da imagem Docker em `ghcr.io/fiap-grupo9/catalog-api` (tags `latest` e `<sha>`), usando o token automático do Actions.
+
+Não há deploy automático: o único ambiente hoje é o Kubernetes/docker-compose local (ver `orchestration`), fora do alcance do GitHub Actions. A imagem fica publicada no registry, pronta para um deploy manual.
+
 ## Decisões arquiteturais
 
 - **Inversão do fluxo de compra (vs. monolito):** `POST /api/biblioteca` não escreve mais a biblioteca direto — apenas publica `OrderPlacedEvent`. A biblioteca só é materializada quando o consumer de `PaymentProcessedEvent(Approved)` executa. Isso modela corretamente a transação assíncrona.
