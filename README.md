@@ -204,7 +204,7 @@ Invoke-RestMethod -Uri http://localhost:5002/api/biblioteca -Method Post -Header
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-- **CI** — em todo push ou pull request: `dotnet restore` + `build` do `CatalogAPI.sln`. Ainda não há projeto de testes neste serviço (ver `users-api`/`payments-api` para o padrão a seguir quando houver).
+- **CI** — em todo push ou pull request: `dotnet restore` + `build` do `CatalogAPI.sln` + `dotnet test` do projeto `tests/FCG.Catalog.Api.Tests` (xUnit + Moq, mesmo padrão de `users-api`/`payments-api`).
 - **CD** — só em push na `master`: build e publicação da imagem Docker no **Azure Container Registry** (`$ACR_LOGIN_SERVER/catalog-api`, tags `latest` e `<sha>`), autenticando com o Service Principal do projeto.
 - **Deploy** — na sequência, aplica `k8s/configmap.yaml` e `k8s/secret.yaml` (segredos injetados via `envsubst` a partir de GitHub Secrets — nenhum valor real fica no repositório) e `k8s/deployment.yaml`/`service.yaml` com a imagem recém-publicada no **AKS**, confirmando rolling update sem downtime com `kubectl rollout status`.
 
