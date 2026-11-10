@@ -21,8 +21,8 @@ jobs:
       - name: Build
         run: dotnet build CatalogAPI.sln --no-restore --configuration Release
 
-      # Ainda nao ha projeto de testes neste servico — a etapa de teste entra
-      # aqui quando ele existir (ver users-api/payments-api para o padrao).
+      - name: Test
+        run: dotnet test tests/FCG.Catalog.Api.Tests/FCG.Catalog.Api.Tests.csproj --no-build --configuration Release --verbosity normal
 
   build-and-push-image:
     needs: build
