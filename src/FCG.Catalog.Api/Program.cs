@@ -135,7 +135,7 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
-    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CatalogAPI" }));
+    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CatalogAPI", version = "2.0.0" }));
     app.UseFcgObservability();
 
     app.Run();
